@@ -83,7 +83,7 @@ public class App {
             // generating 9-digit Account Identifier
             accountNumber.append(randomNumber(9));
             // generating 1-digit checksum
-            accountNumber.append(randomDigit());
+            accountNumber.append(generateChecksum(accountNumber));
         } while (accounts.containsKey(accountNumber.toString()));
         System.out.println("\nYour card has been created");
         System.out.println("Your card number:");
@@ -117,6 +117,23 @@ public class App {
 
     private static void showBalance() {
         System.out.println("\nBalance: " + activeAccount.balance);
+    }
+
+    private static int generateChecksum(StringBuilder accountNumber) {
+        // Luhn Algorithm
+        int sum = 0;
+        for (int i = 0; i < accountNumber.length(); i++) {
+            int digit = Character.getNumericValue(accountNumber.charAt(i));
+            if (i % 2 == 0) {
+                digit *= 2;
+            }
+            if (digit >= 10) {
+                digit -= 9;
+            }
+            sum += digit;
+        }
+        int reminder = sum % 10;
+        return reminder == 0 ? 0 : 10 - reminder;
     }
 
     private static String randomNumber(int length) {
