@@ -1,48 +1,16 @@
-import java.util.*;
+import java.util.Random;
+import java.util.Scanner;
 
 public class App {
     private static final Scanner scanner = new Scanner(System.in);
     private static final Random random = new Random();
 
-    private static final Map<String, Account> accounts = new HashMap<>();
     private static Account activeAccount = null;
     private static final String BIN = "400000";
 
-    private static class Account {
-        private final String accountNumber;
-        private final String pin;
-        private int balance;
-
-        public Account(String accountNumber, String pin) {
-            this.accountNumber = accountNumber;
-            this.pin = pin;
-            this.balance = 0;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Account account = (Account) o;
-            return Objects.equals(accountNumber, account.accountNumber) && Objects.equals(pin, account.pin);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(accountNumber, pin);
-        }
-
-        @Override
-        public String toString() {
-            return "Account{" +
-                    "accountNumber='" + accountNumber + '\'' +
-                    ", pin='" + pin + '\'' +
-                    ", balance=" + balance +
-                    '}';
-        }
-    }
-
     public static void main(String[] args) {
+        DatabaseOperations databaseOperations = new DatabaseOperations();
+
         while (true) {
             showMenu();
             switch (scanner.nextLine()) {
@@ -51,11 +19,11 @@ public class App {
                     return;
                 }
                 case "1" -> {
-                    if (activeAccount == null) createAccount();
+                    if (activeAccount == null) createAccount(databaseOperations);
                     else showBalance();
                 }
                 case "2" -> {
-                    if (activeAccount == null) logIn();
+                    if (activeAccount == null) logIn(databaseOperations);
                     else logOut();
                 }
                 default -> System.out.println("\nWrong choice");
@@ -75,7 +43,7 @@ public class App {
         System.out.println("0. Exit");
     }
 
-    private static void createAccount() {
+    private static void createAccount(DatabaseOperations databaseOperations) {
         StringBuilder accountNumber;
         do {
             accountNumber = new StringBuilder(16);
@@ -84,28 +52,25 @@ public class App {
             accountNumber.append(randomNumber(9));
             // generating 1-digit checksum
             accountNumber.append(generateChecksum(accountNumber));
-        } while (accounts.containsKey(accountNumber.toString()));
+        } while (databaseOperations.isAccountInDatabase(accountNumber.toString()));
         System.out.println("\nYour card has been created");
         System.out.println("Your card number:");
         System.out.println(accountNumber);
         String pinNumber = randomNumber(4);
         System.out.println("Your card PIN:");
         System.out.println(pinNumber);
-        // saving new account
-        accounts.put(accountNumber.toString(), new Account(accountNumber.toString(), pinNumber));
+        // saving new account to database
+        databaseOperations.insertAccount(accountNumber.toString(), pinNumber);
     }
 
-    private static void logIn() {
+    private static void logIn(DatabaseOperations databaseOperations) {
         System.out.println("\nEnter your card number:");
         String cardNumber = scanner.nextLine();
         System.out.println("Enter your PIN:");
         String pin = scanner.nextLine();
-        for (Map.Entry<String, Account> entry : accounts.entrySet()) {
-            if (entry.getKey().equals(cardNumber) && entry.getValue().equals(new Account(cardNumber, pin))) {
-                System.out.println("\nYou have successfully logged in!");
-                activeAccount = entry.getValue();
-                return;
-            }
+        if (databaseOperations.findAccount(cardNumber, pin)) {
+            System.out.println("\nYou have successfully logged in!");
+            activeAccount = new Account(cardNumber, pin);
         }
         System.out.println("\nWrong card number or PIN!");
     }
@@ -116,7 +81,7 @@ public class App {
     }
 
     private static void showBalance() {
-        System.out.println("\nBalance: " + activeAccount.balance);
+        System.out.println("\nBalance: " + activeAccount.getBalance());
     }
 
     private static int generateChecksum(StringBuilder accountNumber) {
